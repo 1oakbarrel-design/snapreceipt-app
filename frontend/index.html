@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="Snap any receipt — AI extracts everything automatically. Track expenses, generate tax reports, export CSV.">
+<title>SnapReceipt — AI Receipt Scanner</title>
+<meta name="theme-color" content="#22c55e">
+<link rel="manifest" href="/manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="SnapReceipt">
+<link rel="apple-touch-icon" href="/icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Mono:wght@400;500&display=swap">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#050505;--s1:#0A0A0A;--s2:#111;--card:#161616;
+  --border:#1E1E1E;--border2:#2A2A2A;--text:#F0EDE6;--muted:#5A5755;
+  --accent:#4A9EFF;--accent2:#7BBFFF;--gold:#C9A84C;
+  --danger:#E03030;--dbg:#120606;--dbr:#2E0E0E;
+  --safe:#28A84A;--sbg:#030E06;--sbr:#082414;
+  --caution:#D4880A;--cbg:#120A00;--cbr:#2E1E00;
+  --r:16px;--rs:10px;
+}
+body.light{--bg:#F8F7F4;--s1:#F0EDE6;--s2:#E8E5DE;--card:#FFF;--border:#E0DDD6;--border2:#C8C5BE;--text:#1A1816;--muted:#6A6760;}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Syne',sans-serif;overflow-x:hidden;-webkit-font-smoothing:antialiased}
+
+/* Auth */
+.auth-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100dvh;padding:24px;max-width:400px;margin:0 auto}
+.auth-logo{font-size:28px;font-weight:800;color:var(--accent);margin-bottom:6px;letter-spacing:-1px}
+.auth-sub{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin-bottom:28px;text-align:center}
+.input-lbl{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.8px;color:var(--muted);display:block;margin-bottom:5px}
+.input-f{width:100%;background:var(--s1);border:0.5px solid var(--border2);border-radius:var(--rs);padding:12px 13px;font-family:'Syne',sans-serif;font-size:14px;color:var(--text);outline:none;transition:border-color .2s;margin-bottom:12px}
+.input-f:focus{border-color:var(--accent)}
+.btn-primary{width:100%;padding:13px;background:var(--accent);color:#fff;border:none;border-radius:var(--rs);font-family:'Syne',sans-serif;font-size:14px;font-weight:800;cursor:pointer;transition:opacity .2s}
+.btn-primary:hover{opacity:.9}
+.btn-secondary{width:100%;padding:11px;background:transparent;color:var(--text);border:0.5px solid var(--border2);border-radius:var(--rs);font-family:'Syne',sans-serif;font-size:13px;font-weight:600;cursor:pointer;margin-top:8px}
+.btn-gold{background:linear-gradient(135deg,#8B6914,var(--gold));color:#050505;border:none;border-radius:var(--rs);font-family:'Syne',sans-serif;font-weight:800;cursor:pointer}
+.auth-err{background:var(--dbg);border:0.5px solid var(--dbr);border-radius:8px;padding:10px 12px;font-family:'DM Mono',monospace;font-size:11px;color:var(--danger);margin-bottom:10px;display:none;line-height:1.5}
+.auth-switch{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);text-align:center;margin-top:14px;cursor:pointer}
+.auth-switch span{color:var(--accent)}
+
+/* App shell */
+#appShell{display:none;flex-direction:column;height:100dvh}
+.hdr{background:var(--s1);border-bottom:0.5px solid var(--border);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.hdr-logo{font-size:18px;font-weight:800;color:var(--accent);letter-spacing:-.5px}
+.hdr-actions{display:flex;align-items:center;gap:8px}
+.hdr-btn{background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px;padding:4px}
+.pro-pill{background:var(--accent);color:#fff;border-radius:99px;padding:3px 9px;font-family:'DM Mono',monospace;font-size:9px;font-weight:700;cursor:pointer}
+.content{flex:1;overflow-y:auto;padding:16px;padding-bottom:80px}
+
+/* Bottom tabs */
+.tabs{background:var(--s1);border-top:0.5px solid var(--border);display:flex;position:fixed;bottom:0;left:0;right:0;z-index:10;padding-bottom:env(safe-area-inset-bottom)}
+.tab{flex:1;display:flex;flex-direction:column;align-items:center;padding:10px 4px 8px;gap:3px;border:none;background:none;cursor:pointer;color:var(--muted);transition:color .2s}
+.tab.active{color:var(--accent)}
+.tab-icon{font-size:20px}
+.tab-lbl{font-family:'DM Mono',monospace;font-size:9px}
+
+/* Scan screen */
+.scan-zone{border:1.5px dashed var(--border2);border-radius:var(--r);padding:32px 20px;text-align:center;cursor:pointer;transition:all .3s;background:linear-gradient(135deg,var(--s1),var(--bg))}
+.scan-zone:hover,.scan-zone.drag{border-color:var(--accent);box-shadow:0 0 20px rgba(74,158,255,.1)}
+.scan-icon{font-size:48px;margin-bottom:12px;opacity:.5}
+.scan-title{font-size:17px;font-weight:700;margin-bottom:6px}
+.scan-sub{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin-bottom:18px;line-height:1.6}
+.scan-btns{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.scan-btn{background:var(--s2);border:0.5px solid var(--border2);border-radius:var(--rs);padding:9px 16px;font-family:'Syne',sans-serif;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer;display:flex;align-items:center;gap:5px;transition:all .2s}
+.scan-btn:hover{color:var(--text);border-color:var(--accent)}
+
+/* Receipt card */
+.receipt-card{background:var(--card);border:0.5px solid var(--border);border-radius:var(--rs);padding:13px;margin-bottom:8px;cursor:pointer;transition:border-color .2s}
+.receipt-card:hover{border-color:var(--border2)}
+.receipt-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:6px}
+.receipt-merchant{font-size:14px;font-weight:700}
+.receipt-amount{font-size:15px;font-weight:800;color:var(--accent)}
+.receipt-bottom{display:flex;align-items:center;gap:8px}
+.receipt-date{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted)}
+.receipt-cat{font-family:'DM Mono',monospace;font-size:9px;padding:2px 8px;border-radius:99px;background:var(--s2);border:0.5px solid var(--border);color:var(--muted)}
+.receipt-biz{font-family:'DM Mono',monospace;font-size:9px;color:var(--accent);padding:2px 8px;border-radius:99px;background:rgba(74,158,255,.08);border:0.5px solid rgba(74,158,255,.2)}
+
+/* Results panel */
+.result-panel{background:var(--card);border:0.5px solid var(--border);border-radius:var(--r);padding:18px;margin-bottom:12px}
+.result-merchant{font-size:22px;font-weight:800;letter-spacing:-.5px;margin-bottom:4px}
+.result-amount{font-size:36px;font-weight:800;color:var(--accent);letter-spacing:-1px;margin-bottom:6px}
+.result-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:0.5px solid var(--border)}
+.result-row:last-child{border:none}
+.result-lbl{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted)}
+.result-val{font-size:13px;font-weight:600}
+.conf-bar{height:4px;background:var(--s2);border-radius:2px;margin-top:6px}
+.conf-fill{height:4px;border-radius:2px;background:var(--safe);transition:width .6s ease}
+
+/* Dashboard */
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}
+.stat-card{background:var(--card);border:0.5px solid var(--border);border-radius:var(--rs);padding:14px;text-align:center}
+.stat-num{font-size:24px;font-weight:800;letter-spacing:-.5px;color:var(--accent)}
+.stat-lbl{font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);margin-top:2px}
+.cat-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:0.5px solid var(--border)}
+.cat-bar-wrap{flex:1;height:4px;background:var(--s2);border-radius:2px}
+.cat-bar{height:4px;border-radius:2px;background:var(--accent);transition:width .6s}
+.section-title{font-size:13px;font-weight:700;margin-bottom:10px;letter-spacing:-.2px}
+.section-mono{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:1px;color:var(--accent);margin-bottom:8px}
+
+/* Pro modal */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:100;align-items:flex-end;justify-content:center}
+.modal-bg.open{display:flex}
+.modal{background:var(--s1);border-top:1px solid var(--border2);border-radius:16px 16px 0 0;padding:24px 18px 48px;width:100%;max-width:480px;max-height:90dvh;overflow-y:auto}
+.modal-handle{width:34px;height:4px;background:var(--border2);border-radius:2px;margin:0 auto 18px}
+.price-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}
+.price-opt{background:var(--card);border:0.5px solid var(--border);border-radius:var(--rs);padding:13px;text-align:center;cursor:pointer;transition:all .2s;position:relative}
+.price-opt.selected{border-color:var(--accent);background:rgba(74,158,255,.06)}
+.price-badge{position:absolute;top:-8px;left:50%;transform:translateX(-50%);background:var(--accent);color:#fff;font-family:'DM Mono',monospace;font-size:8px;font-weight:700;padding:2px 8px;border-radius:99px;white-space:nowrap}
+.price-amount{font-size:20px;font-weight:800;margin-bottom:2px}
+.price-period{font-family:'DM Mono',monospace;font-size:9px;color:var(--muted)}
+.price-save{font-family:'DM Mono',monospace;font-size:9px;color:var(--accent);margin-top:3px}
+.feature-list{margin-bottom:16px}
+.feature-item{display:flex;align-items:center;gap:8px;padding:6px 0;font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);border-bottom:0.5px solid var(--border)}
+.feature-item:last-child{border:none}
+.feature-check{color:var(--safe);flex-shrink:0}
+
+/* Toast */
+.toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:var(--s1);border:0.5px solid var(--border2);border-radius:99px;padding:9px 18px;font-family:'DM Mono',monospace;font-size:11px;color:var(--text);z-index:200;opacity:0;transition:opacity .3s;white-space:nowrap;pointer-events:none}
+.toast.show{opacity:1}
+
+/* Loading */
+.loading{text-align:center;padding:40px;font-family:'DM Mono',monospace;font-size:11px;color:var(--muted)}
+.spinner{width:24px;height:24px;border:2px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 10px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Empty state */
+.empty{text-align:center;padding:40px 20px}
+.empty-icon{font-size:40px;margin-bottom:12px;opacity:.25}
+.empty-title{font-size:14px;font-weight:700;color:var(--muted);margin-bottom:6px}
+.empty-sub{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);line-height:1.6}
+</style>
+</head>
+<body>
+
+<!-- Auth Screen -->
+<div id="authScreen" style="display:flex">
+  <div class="auth-screen">
+    <div class="auth-logo">🧾 SnapReceipt</div>
+    <div class="auth-sub">// AI receipt scanner. Snap, extract, done.</div>
+    <div id="authErr" class="auth-err"></div>
+    <div id="loginForm">
+      <label class="input-lbl">EMAIL</label>
+      <input class="input-f" type="email" id="loginEmail" placeholder="you@example.com" autocomplete="email">
+      <label class="input-lbl">PASSWORD</label>
+      <input class="input-f" type="password" id="loginPassword" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')login()">
+      <button class="btn-primary" onclick="login()">Sign In</button>
+      <div class="auth-switch" onclick="showSignup()">No account? <span>Create one free →</span></div>
+    </div>
+    <div id="signupForm" style="display:none;width:100%">
+      <label class="input-lbl">NAME</label>
+      <input class="input-f" type="text" id="signupName" placeholder="Your name" autocomplete="name">
+      <label class="input-lbl">BUSINESS NAME (optional)</label>
+      <input class="input-f" type="text" id="signupBusiness" placeholder="Acme LLC">
+      <label class="input-lbl">EMAIL</label>
+      <input class="input-f" type="email" id="signupEmail" placeholder="you@example.com" autocomplete="email">
+      <label class="input-lbl">PASSWORD</label>
+      <input class="input-f" type="password" id="signupPassword" placeholder="Min 8 characters" autocomplete="new-password">
+      <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin-bottom:12px;line-height:1.5">
+        <input type="checkbox" id="gdprCheck" style="margin-right:6px">
+        I agree to the <a href="/privacy" style="color:var(--accent)">Privacy Policy</a>
+      </div>
+      <button class="btn-primary" onclick="signup()">Create Free Account</button>
+      <div class="auth-switch" onclick="showLogin()">Already have an account? <span>Sign in →</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- App Shell -->
+<div id="appShell">
+  <div class="hdr">
+    <div class="hdr-logo">🧾 SnapReceipt</div>
+    <div class="hdr-actions">
+      <span id="proPill" class="pro-pill" onclick="openProModal()" style="display:none">PRO</span>
+      <button class="hdr-btn" onclick="openProModal()" id="upgradeBtn" title="Upgrade">⭐</button>
+      <button class="hdr-btn" onclick="switchTab('account')" title="Account">👤</button>
+    </div>
+  </div>
+
+  <div class="content" id="mainContent">
+    <!-- Scan Tab -->
+    <div id="scanTab">
+      <div id="scanZone" class="scan-zone" onclick="triggerFileInput()" ondrop="handleDrop(event)" ondragover="handleDragOver(event)" ondragleave="this.classList.remove('drag')">
+        <div class="scan-icon">📷</div>
+        <div class="scan-title">Snap a receipt</div>
+        <div class="scan-sub">Take a photo or upload an image.<br>AI extracts everything automatically.</div>
+        <div class="scan-btns">
+          <button class="scan-btn" onclick="event.stopPropagation();triggerCamera()">📷 Camera</button>
+          <button class="scan-btn" onclick="event.stopPropagation();triggerFileInput()">📁 Upload</button>
+          <button class="scan-btn" onclick="event.stopPropagation();pasteFromClipboard()">📋 Paste</button>
+        </div>
+      </div>
+      <input type="file" id="fileInput" accept="image/*" capture="environment" style="display:none" onchange="handleFile(this.files[0])">
+      <input type="file" id="galleryInput" accept="image/*" style="display:none" onchange="handleFile(this.files[0])">
+
+      <div id="scanResult" style="display:none;margin-top:16px"></div>
+      <div id="scanLoading" style="display:none;margin-top:16px" class="loading">
+        <div class="spinner"></div>
+        Extracting receipt data…
+      </div>
+    </div>
+
+    <!-- History Tab -->
+    <div id="historyTab" style="display:none">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div class="section-title">Receipts</div>
+        <input id="searchInput" class="input-f" style="width:auto;flex:1;max-width:200px;margin:0;padding:7px 11px;font-size:12px" placeholder="Search…" oninput="searchReceipts(this.value)">
+      </div>
+      <div id="historyList"></div>
+    </div>
+
+    <!-- Dashboard Tab -->
+    <div id="dashboardTab" style="display:none">
+      <div class="section-mono">OVERVIEW</div>
+      <div id="dashboardContent" class="loading"><div class="spinner"></div>Loading…</div>
+    </div>
+
+    <!-- Account Tab -->
+    <div id="accountTab" style="display:none">
+      <div class="section-mono">ACCOUNT</div>
+      <div id="accountContent"></div>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" id="tab-scan" onclick="switchTab('scan')"><span class="tab-icon">📷</span><span class="tab-lbl">Scan</span></button>
+    <button class="tab" id="tab-history" onclick="switchTab('history')"><span class="tab-icon">🗂</span><span class="tab-lbl">History</span></button>
+    <button class="tab" id="tab-dashboard" onclick="switchTab('dashboard')"><span class="tab-icon">📊</span><span class="tab-lbl">Reports</span></button>
+    <button class="tab" id="tab-account" onclick="switchTab('account')"><span class="tab-icon">👤</span><span class="tab-lbl">Account</span></button>
+  </div>
+</div>
+
+<!-- Pro Modal -->
+<div class="modal-bg" id="proModal" onclick="if(event.target===this)closeProModal()">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:1px;color:var(--accent);margin-bottom:8px">SNAPRECEIPT PRO</div>
+    <div style="font-size:20px;font-weight:800;margin-bottom:6px;letter-spacing:-.5px">Unlimited receipts.<br>Tax-ready exports.</div>
+    <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin-bottom:18px;line-height:1.6">Free plan: 15 receipts/month. Pro: unlimited.</div>
+    <div class="price-grid">
+      <div class="price-opt" id="priceMonthly" onclick="selectPlan('monthly')">
+        <div class="price-amount">$3.99</div>
+        <div class="price-period">per month</div>
+      </div>
+      <div class="price-opt selected" id="priceYearly" onclick="selectPlan('yearly')">
+        <div class="price-badge">SAVE 37%</div>
+        <div class="price-amount">$29.99</div>
+        <div class="price-period">per year</div>
+        <div class="price-save">$2.50/month</div>
+      </div>
+    </div>
+    <div class="feature-list">
+      <div class="feature-item"><span class="feature-check">✓</span>Unlimited receipt scanning</div>
+      <div class="feature-item"><span class="feature-check">✓</span>Tax deduction reports</div>
+      <div class="feature-item"><span class="feature-check">✓</span>CSV & PDF export</div>
+      <div class="feature-item"><span class="feature-check">✓</span>Business vs personal split</div>
+      <div class="feature-item"><span class="feature-check">✓</span>Receipt image storage</div>
+      <div class="feature-item"><span class="feature-check">✓</span>12-month spending trends</div>
+      <div class="feature-item"><span class="feature-check">✓</span>Multi-currency support</div>
+      <div class="feature-item"><span class="feature-check">✓</span>Priority support</div>
+    </div>
+    <button class="btn-primary" id="checkoutBtn" onclick="startCheckout()" style="margin-bottom:8px">⭐ Start Pro — 7-day free trial</button>
+    <div id="priceSummary" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);text-align:center;margin-bottom:10px">$29.99/year · $2.50/month</div>
+    <button class="btn-secondary" onclick="closeProModal()">Maybe later</button>
+    <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);text-align:center;margin-top:10px">Cancel anytime · No charge during trial · Secure payment</div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API_BASE = 'https://snapreceipt-backend-production.up.railway.app';
+let token = localStorage.getItem('sr_token');
+let refreshToken = localStorage.getItem('sr_refresh');
+let currentUser = null;
+let selectedPlan = 'yearly';
+let currentReceipts = [];
+
+// ── API helper ─────────────────────────────────────────────────
+async function api(path, opts = {}) {
+  const res = await fetch(API_BASE + path, {
+    ...opts,
+    headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: 'Bearer ' + token } : {}), ...(opts.headers||{}) }
+  });
+  const data = await res.json().catch(() => ({}));
+  if (res.status === 401 && data.code === 'TOKEN_EXPIRED' && refreshToken) {
+    try {
+      const r = await fetch(API_BASE + '/auth/refresh', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ refresh_token: refreshToken }) });
+      if (r.ok) {
+        const d = await r.json();
+        token = d.token; refreshToken = d.refresh_token;
+        localStorage.setItem('sr_token', token); localStorage.setItem('sr_refresh', refreshToken);
+        return api(path, opts);
+      }
+    } catch(e) {}
+    logout(); throw new Error('Session expired');
+  }
+  if (!res.ok) throw data;
+  return data;
+}
+
+function showToast(msg, dur = 3000) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), dur);
+}
+
+// ── Auth ───────────────────────────────────────────────────────
+function showAuthErr(msg) { const e = document.getElementById('authErr'); e.textContent = msg; e.style.display = 'block'; }
+function clearAuthErr() { document.getElementById('authErr').style.display = 'none'; }
+function showLogin() { document.getElementById('loginForm').style.display = 'block'; document.getElementById('signupForm').style.display = 'none'; clearAuthErr(); }
+function showSignup() { document.getElementById('loginForm').style.display = 'none'; document.getElementById('signupForm').style.display = 'block'; clearAuthErr(); }
+
+async function login() {
+  clearAuthErr();
+  const email = document.getElementById('loginEmail').value;
+  const password = document.getElementById('loginPassword').value;
+  if (!email || !password) return showAuthErr('Email and password required');
+  try {
+    const d = await api('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) });
+    storeAuth(d); showApp(d.user);
+  } catch(e) { showAuthErr(e.error || 'Login failed'); }
+}
+
+async function signup() {
+  clearAuthErr();
+  const name = document.getElementById('signupName').value;
+  const business_name = document.getElementById('signupBusiness').value;
+  const email = document.getElementById('signupEmail').value;
+  const password = document.getElementById('signupPassword').value;
+  const gdpr = document.getElementById('gdprCheck').checked;
+  if (!email || !password) return showAuthErr('Email and password required');
+  if (!gdpr) return showAuthErr('Please agree to the Privacy Policy');
+  try {
+    const d = await api('/auth/signup', { method: 'POST', body: JSON.stringify({ name, business_name, email, password, gdpr_consent: true }) });
+    storeAuth(d); showApp(d.user);
+  } catch(e) { showAuthErr(e.error || 'Signup failed'); }
+}
+
+function storeAuth(d) {
+  token = d.token; refreshToken = d.refresh_token;
+  localStorage.setItem('sr_token', token);
+  localStorage.setItem('sr_refresh', refreshToken);
+  currentUser = d.user;
+}
+
+function logout() {
+  localStorage.removeItem('sr_token'); localStorage.removeItem('sr_refresh');
+  token = null; refreshToken = null; currentUser = null;
+  document.getElementById('authScreen').style.display = 'flex';
+  document.getElementById('appShell').style.display = 'none';
+}
+
+// ── App ────────────────────────────────────────────────────────
+function showApp(user) {
+  currentUser = user;
+  document.getElementById('authScreen').style.display = 'none';
+  document.getElementById('appShell').style.display = 'flex';
+  updateHeader();
+  loadHistory();
+}
+
+function updateHeader() {
+  document.getElementById('proPill').style.display = currentUser?.is_pro ? 'block' : 'none';
+  document.getElementById('upgradeBtn').style.display = currentUser?.is_pro ? 'none' : 'block';
+}
+
+function switchTab(tab) {
+  ['scan','history','dashboard','account'].forEach(t => {
+    document.getElementById(t + 'Tab').style.display = t === tab ? 'block' : 'none';
+    document.getElementById('tab-' + t).classList.toggle('active', t === tab);
+  });
+  if (tab === 'history') loadHistory();
+  if (tab === 'dashboard') loadDashboard();
+  if (tab === 'account') renderAccount();
+  if (navigator.vibrate) navigator.vibrate(8);
+}
+
+// ── Scanning ───────────────────────────────────────────────────
+function triggerCamera() { document.getElementById('fileInput').click(); }
+function triggerFileInput() { document.getElementById('galleryInput').click(); }
+
+function handleDragOver(e) { e.preventDefault(); document.getElementById('scanZone').classList.add('drag'); }
+function handleDrop(e) {
+  e.preventDefault(); document.getElementById('scanZone').classList.remove('drag');
+  const file = e.dataTransfer.files[0];
+  if (file && file.type.startsWith('image/')) handleFile(file);
+}
+
+async function pasteFromClipboard() {
+  try {
+    const items = await navigator.clipboard.read();
+    for (const item of items) {
+      const t = item.types.find(x => x.startsWith('image/'));
+      if (t) { handleFile(await item.getType(t)); return; }
+    }
+    showToast('No image in clipboard');
+  } catch(e) { showToast('Clipboard access denied'); }
+}
+
+function handleFile(file) {
+  if (!file || !file.type.startsWith('image/')) return showToast('Please select an image');
+  const reader = new FileReader();
+  reader.onload = e => {
+    const base64 = e.target.result.split(',')[1];
+    scanReceipt(base64, file.type);
+  };
+  reader.readAsDataURL(file);
+}
+
+async function scanReceipt(base64, mimeType) {
+  document.getElementById('scanResult').style.display = 'none';
+  document.getElementById('scanLoading').style.display = 'block';
+  if (navigator.vibrate) navigator.vibrate(8);
+  try {
+    const d = await api('/scan/scan', { method: 'POST', body: JSON.stringify({ image_base64: base64, mime_type: mimeType }) });
+    document.getElementById('scanLoading').style.display = 'none';
+    renderScanResult(d);
+    if (navigator.vibrate) navigator.vibrate([10,40,10]);
+    currentReceipts.unshift(d);
+  } catch(e) {
+    document.getElementById('scanLoading').style.display = 'none';
+    if (e.code === 'LIMIT_REACHED') {
+      openProModal();
+      showToast('5 free receipts used this month — upgrade for unlimited');
+    }
+    else showToast('⚠ ' + (e.error || 'Scan failed'));
+    if (navigator.vibrate) navigator.vibrate([80,30,80]);
+  }
+}
+
+function renderScanResult(d) {
+  const confPct = Math.round((d.confidence || 0.5) * 100);
+  const confColor = confPct >= 80 ? 'var(--safe)' : confPct >= 60 ? 'var(--caution)' : 'var(--danger)';
+  const itemsHtml = (d.items || []).slice(0, 10).map(i =>
+    `<div class="result-row"><span class="result-lbl">${i.name||'Item'}</span><span class="result-val">${formatCurrency(i.price, d.currency)}</span></div>`
+  ).join('');
+
+  document.getElementById('scanResult').style.display = 'block';
+  document.getElementById('scanResult').innerHTML = `
+    <div class="result-panel">
+      <div class="result-merchant">${d.merchant || 'Unknown merchant'}</div>
+      <div class="result-amount">${formatCurrency(d.total, d.currency)}</div>
+      <div class="result-row"><span class="result-lbl">Date</span><span class="result-val">${d.date || 'Unknown'}</span></div>
+      <div class="result-row"><span class="result-lbl">Category</span><span class="result-val">${d.category || 'Other'}</span></div>
+      ${d.tax ? `<div class="result-row"><span class="result-lbl">Tax</span><span class="result-val">${formatCurrency(d.tax, d.currency)}</span></div>` : ''}
+      ${d.tip ? `<div class="result-row"><span class="result-lbl">Tip</span><span class="result-val">${formatCurrency(d.tip, d.currency)}</span></div>` : ''}
+      ${d.payment_method ? `<div class="result-row"><span class="result-lbl">Payment</span><span class="result-val">${d.payment_method}</span></div>` : ''}
+      <div class="result-row"><span class="result-lbl">Business expense</span><span class="result-val" style="color:${d.is_business?'var(--accent)':'var(--muted)'}">${d.is_business ? '✓ Yes' : 'No'}</span></div>
+      ${itemsHtml ? `<div style="margin-top:8px"><div class="section-mono" style="font-size:8px">ITEMS</div>${itemsHtml}</div>` : ''}
+      <div class="conf-bar" title="AI confidence: ${confPct}%">
+        <div class="conf-fill" style="width:${confPct}%;background:${confColor}"></div>
+      </div>
+      <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);margin-top:3px">AI confidence: ${confPct}%</div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn-primary" style="flex:1;padding:11px;font-size:12px" onclick="switchTab('history');loadHistory()">✓ Saved to History</button>
+      <button class="btn-secondary" style="flex:1;padding:11px;font-size:12px;margin:0" onclick="document.getElementById('scanResult').style.display='none'">Scan Another</button>
+    </div>`;
+}
+
+// ── History ────────────────────────────────────────────────────
+async function loadHistory() {
+  try {
+    const d = await api('/scan/history');
+    currentReceipts = d.receipts || [];
+    renderHistory(currentReceipts);
+  } catch(e) {}
+}
+
+function renderHistory(receipts) {
+  const el = document.getElementById('historyList');
+  if (!receipts.length) {
+    el.innerHTML = `<div class="empty"><div class="empty-icon">🧾</div><div class="empty-title">No receipts yet</div><div class="empty-sub">Scan your first receipt to get started.<br>Food, shopping, fuel, anything.</div></div>`;
+    return;
+  }
+  el.innerHTML = receipts.map(r => `
+    <div class="receipt-card" onclick="openReceipt('${r.id}')">
+      <div class="receipt-top">
+        <div class="receipt-merchant">${r.merchant || 'Unknown'}</div>
+        <div class="receipt-amount">${formatCurrency(r.total, r.currency)}</div>
+      </div>
+      <div class="receipt-bottom">
+        <div class="receipt-date">${r.date || ''}</div>
+        <div class="receipt-cat">${r.category || 'Other'}</div>
+        ${r.is_business ? '<div class="receipt-biz">Business</div>' : ''}
+      </div>
+    </div>`).join('');
+}
+
+async function searchReceipts(q) {
+  if (!q.trim()) return renderHistory(currentReceipts);
+  try {
+    const d = await api(`/scan/search?q=${encodeURIComponent(q)}`);
+    renderHistory(d.results || []);
+  } catch(e) {}
+}
+
+async function openReceipt(id) {
+  try {
+    const d = await api(`/scan/${id}`);
+    const r = d.receipt;
+    const modal = document.createElement('div');
+    modal.className = 'modal-bg open';
+    modal.innerHTML = `<div class="modal">
+      <div class="modal-handle"></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <div style="font-size:18px;font-weight:800">${r.merchant || 'Receipt'}</div>
+        <button onclick="deleteReceipt('${r.id}',this.closest('.modal-bg'))" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:13px;font-family:'DM Mono',monospace">Delete</button>
+      </div>
+      <div style="font-size:28px;font-weight:800;color:var(--accent);margin-bottom:12px">${formatCurrency(r.total, r.currency)}</div>
+      <div class="result-row"><span class="result-lbl">Date</span><span class="result-val">${r.date}</span></div>
+      <div class="result-row"><span class="result-lbl">Category</span><span class="result-val">${r.category}</span></div>
+      ${r.tax ? `<div class="result-row"><span class="result-lbl">Tax</span><span class="result-val">${formatCurrency(r.tax, r.currency)}</span></div>` : ''}
+      ${r.tip ? `<div class="result-row"><span class="result-lbl">Tip</span><span class="result-val">${formatCurrency(r.tip, r.currency)}</span></div>` : ''}
+      ${r.payment_method ? `<div class="result-row"><span class="result-lbl">Payment</span><span class="result-val">${r.payment_method}</span></div>` : ''}
+      <div class="result-row"><span class="result-lbl">Business</span><span class="result-val">${r.is_business ? '✓ Yes' : 'No'}</span></div>
+      <div class="result-row"><span class="result-lbl">Tax Deductible</span><span class="result-val">${r.is_deductible ? '✓ Yes' : 'No'}</span></div>
+      <div style="height:12px"></div>
+      <button class="btn-secondary" onclick="this.closest('.modal-bg').remove()">Close</button>
+    </div>`;
+    modal.onclick = e => { if (e.target === modal) modal.remove(); };
+    document.body.appendChild(modal);
+  } catch(e) { showToast('Could not load receipt'); }
+}
+
+async function deleteReceipt(id, modalEl) {
+  if (!confirm('Delete this receipt?')) return;
+  try {
+    await api(`/scan/${id}`, { method: 'DELETE' });
+    currentReceipts = currentReceipts.filter(r => r.id !== id);
+    renderHistory(currentReceipts);
+    modalEl?.remove();
+    showToast('✓ Receipt deleted');
+  } catch(e) { showToast('Delete failed'); }
+}
+
+// ── Dashboard ──────────────────────────────────────────────────
+async function loadDashboard() {
+  document.getElementById('dashboardContent').innerHTML = '<div class="loading"><div class="spinner"></div>Loading…</div>';
+  try {
+    const d = await api('/reports/dashboard');
+    const month = d.this_month;
+    const maxCat = Math.max(...(month.by_category || []).map(c => c.total), 1);
+    document.getElementById('dashboardContent').innerHTML = `
+      <div class="stat-grid">
+        <div class="stat-card"><div class="stat-num">${formatCurrency(month.total || 0, d.currency)}</div><div class="stat-lbl">This Month</div></div>
+        <div class="stat-card"><div class="stat-num">${month.by_category?.length || 0}</div><div class="stat-lbl">Categories</div></div>
+      </div>
+      <div class="section-title">Spending by Category</div>
+      ${(month.by_category || []).map(c => `
+        <div class="cat-row">
+          <div style="width:100px;font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.category}</div>
+          <div class="cat-bar-wrap"><div class="cat-bar" style="width:${Math.round((c.total/maxCat)*100)}%"></div></div>
+          <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);min-width:60px;text-align:right">${formatCurrency(c.total, d.currency)}</div>
+        </div>`).join('') || '<div style="font-family:\'DM Mono\',monospace;font-size:11px;color:var(--muted)">No receipts this month yet.</div>'}
+      <div style="height:16px"></div>
+      <div style="display:flex;gap:8px">
+        ${!currentUser?.is_pro ? `<button class="btn-primary" style="font-size:12px;padding:11px" onclick="openProModal()">⭐ Export to CSV (Pro)</button>` : `<button class="btn-primary" style="font-size:12px;padding:11px" onclick="exportCSV()">📥 Export CSV</button><button class="btn-secondary" style="font-size:12px;padding:11px;margin:0" onclick="exportTax()">📋 Tax Report</button>`}
+      </div>`;
+  } catch(e) { document.getElementById('dashboardContent').innerHTML = '<div class="empty"><div class="empty-icon">📊</div><div class="empty-title">No data yet</div><div class="empty-sub">Scan some receipts to see reports.</div></div>'; }
+}
+
+async function exportCSV() {
+  try {
+    const year = new Date().getFullYear();
+    const res = await fetch(`${API_BASE}/reports/export?format=csv&year=${year}`, { headers: { Authorization: 'Bearer ' + token } });
+    if (!res.ok) throw new Error();
+    const blob = await res.blob();
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+    a.download = `snapreceipt-${year}.csv`; a.click();
+    showToast('✓ CSV downloaded');
+  } catch(e) { showToast('Export failed'); }
+}
+
+async function exportTax() {
+  try {
+    const year = new Date().getFullYear();
+    const d = await api(`/reports/tax?year=${year}`);
+    showToast(`✓ Tax year ${year}: ${formatCurrency(d.total_deductible, 'USD')} deductible`);
+  } catch(e) { showToast(e.error || 'Failed'); }
+}
+
+// ── Account ────────────────────────────────────────────────────
+function renderAccount() {
+  const plan = { monthly: 'Monthly Pro', yearly: 'Annual Pro', free: 'Free' }[currentUser?.plan] || 'Free';
+  document.getElementById('accountContent').innerHTML = `
+    <div style="background:var(--card);border:0.5px solid var(--border);border-radius:var(--rs);padding:14px;margin-bottom:10px">
+      <div style="font-size:14px;font-weight:700;margin-bottom:4px">${currentUser?.name || currentUser?.email}</div>
+      <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin-bottom:2px">${currentUser?.email}</div>
+      <div style="font-family:'DM Mono',monospace;font-size:10px;color:${currentUser?.is_pro?'var(--accent)':'var(--muted)'}">${plan}</div>
+    </div>
+    ${currentUser?.business_name ? `<div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin-bottom:12px">Business: ${currentUser.business_name}</div>` : ''}
+    ${!currentUser?.is_pro ? `<button class="btn-primary" onclick="openProModal()" style="margin-bottom:8px">⭐ Upgrade to Pro</button>` : `<button class="btn-secondary" onclick="manageSubscription()">Manage Subscription →</button>`}
+    <button class="btn-secondary" onclick="exportData()" style="margin-top:4px">📥 Export My Data</button>
+    <button class="btn-secondary" onclick="logout()" style="margin-top:4px">Sign Out</button>`;
+}
+
+async function manageSubscription() {
+  try { const d = await api('/stripe/portal', { method: 'POST' }); window.location.href = d.portal_url; }
+  catch(e) { showToast('Could not open billing portal'); }
+}
+
+async function exportData() {
+  try {
+    const res = await fetch(`${API_BASE}/auth/export-data`, { method: 'POST', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' } });
+    const blob = await res.blob();
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+    a.download = 'my-snapreceipt-data.json'; a.click();
+  } catch(e) { showToast('Export failed'); }
+}
+
+// ── Pro modal ──────────────────────────────────────────────────
+function selectPlan(plan) {
+  selectedPlan = plan;
+  ['monthly','yearly'].forEach(p => document.getElementById('price'+p.charAt(0).toUpperCase()+p.slice(1)).classList.toggle('selected', p===plan));
+  const summaries = { monthly: '$3.99/month', yearly: '$29.99/year · $2.50/month' };
+  document.getElementById('priceSummary').textContent = summaries[plan] || '';
+  document.getElementById('checkoutBtn').textContent = plan === 'yearly' ? '⭐ Start Pro — 7-day free trial' : '⭐ Start Monthly — 7-day trial';
+}
+
+function openProModal() { document.getElementById('proModal').classList.add('open'); selectPlan('yearly'); }
+function closeProModal() { document.getElementById('proModal').classList.remove('open'); }
+
+async function startCheckout() {
+  try {
+    const btn = document.getElementById('checkoutBtn');
+    btn.disabled = true; btn.textContent = 'Loading…';
+    const d = await api('/stripe/checkout', { method: 'POST', body: JSON.stringify({ plan: selectedPlan }) });
+    window.location.href = d.checkout_url;
+  } catch(e) {
+    showToast('⚠ ' + (e.error || 'Checkout failed'));
+    const btn = document.getElementById('checkoutBtn');
+    btn.disabled = false; btn.textContent = '⭐ Start Pro — 7-day free trial';
+  }
+}
+
+// ── Helpers ────────────────────────────────────────────────────
+function formatCurrency(amount, currency = 'USD') {
+  try { return new Intl.NumberFormat('en-US', { style: 'currency', currency: currency || 'USD' }).format(amount || 0); }
+  catch(e) { return `$${parseFloat(amount || 0).toFixed(2)}`; }
+}
+
+// ── Init ───────────────────────────────────────────────────────
+(async () => {
+  const params = new URLSearchParams(location.search);
+  if (params.get('pro') === '1') { showToast('🎉 Pro activated! Welcome.'); history.replaceState({}, '', '/'); }
+  if (params.get('verify') === 'success') showToast('✅ Email verified!');
+
+  if (token) {
+    try {
+      const d = await api('/auth/me');
+      showApp(d.user);
+    } catch(e) {
+      if (refreshToken) {
+        try {
+          const r = await fetch(API_BASE + '/auth/refresh', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ refresh_token: refreshToken }) });
+          if (r.ok) {
+            const d = await r.json();
+            storeAuth(d); showApp(d.user); return;
+          }
+        } catch(e2) {}
+      }
+      logout();
+    }
+  }
+})();
+</script>
+
+<!-- Featurebase Feedback Widget -->
+<script>
+  window.fbAsyncInit = function() {
+    Featurebase("initialize_feedback_widget", {
+      organization: "purityapps",
+      theme: "light",
+      placement: "right",
+      email: (typeof currentUser !== 'undefined' && currentUser) ? currentUser.email : null,
+      defaultTitle: "Feedback for SnapReceipt",
+      defaultDescription: "Please describe your bug or feature request for SnapReceipt.",
+      metadata: { app: "SnapReceipt" }
+    });
+  };
+</script>
+<script async defer src="https://do.featurebase.app/js/sdk.js" id="featurebase-sdk"></script>
+<script>if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(()=>{});</script>
+</body>
+</html>

@@ -1,0 +1,11 @@
+{
+  "appId": "com.purityapps.snapreceipt",
+  "appName": "SnapReceipt",
+  "webDir": "frontend",
+  "server": {
+    "androidScheme": "https"
+  },
+  "android": {
+    "backgroundColor": "#22c55e"
+  }
+}
