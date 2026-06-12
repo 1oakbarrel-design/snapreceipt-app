@@ -686,5 +686,90 @@ function formatCurrency(amount, currency = 'USD') {
 </script>
 <script async defer src="https://do.featurebase.app/js/sdk.js" id="featurebase-sdk"></script>
 <script>if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(()=>{});</script>
+
+<!-- AdMob + Play Billing (native Android only) -->
+<script>
+(function() {
+  var ADMOB_BANNER = 'ca-app-pub-3940256099942544/6300978111';
+  var ADMOB_INTER  = 'ca-app-pub-3940256099942544/1033173712';
+  var MONTHLY_ID   = 'snapreceipt_monthly';
+  var YEARLY_ID    = 'snapreceipt_yearly';
+
+  function isProUser() {
+    try {
+      var keys = ['user','currentUser','userData','authUser'];
+      for (var i = 0; i < keys.length; i++) {
+        var s = localStorage.getItem(keys[i]) || sessionStorage.getItem(keys[i]);
+        if (!s) continue;
+        var u = JSON.parse(s);
+        if (u.isPro || u.is_pro || u.plan === 'pro' || u.plan === 'lifetime' ||
+            u.subscription_status === 'active' || u.subscription_status === 'lifetime') return true;
+      }
+    } catch(e) {}
+    return false;
+  }
+
+  if (!window.Capacitor || !window.Capacitor.isNativePlatform()) return;
+
+  var adMob = window.Capacitor.registerPlugin('AdMob');
+  var scanCount = parseInt(localStorage.getItem('_nsc') || '0');
+
+  document.addEventListener('DOMContentLoaded', function() {
+    adMob.initialize({ initializeForTesting: true }).then(function() {
+      if (!isProUser()) {
+        adMob.showBanner({
+          adId: ADMOB_BANNER, adSize: 'BANNER',
+          position: 'BOTTOM_CENTER', margin: 0, isTesting: true
+        }).catch(function(){});
+      }
+    }).catch(function(){});
+
+    document.addEventListener('userProStatusChanged', function() {
+      if (isProUser()) adMob.hideBanner().catch(function(){});
+      else adMob.showBanner({ adId: ADMOB_BANNER, adSize: 'BANNER', position: 'BOTTOM_CENTER', margin: 0, isTesting: true }).catch(function(){});
+    });
+  });
+
+  var origFetch = window.fetch;
+  window.fetch = function() {
+    var args = [].slice.call(arguments);
+    var url = typeof args[0] === 'string' ? args[0] : ((args[0] || {}).url || '');
+
+    if (url.indexOf('/stripe/create-checkout') > -1) {
+      var b = {};
+      try { b = JSON.parse(args[1] && args[1].body); } catch(e) {}
+      var pid = (b.interval === 'year' || b.plan === 'yearly') ? YEARLY_ID : MONTHLY_ID;
+      var billing = window.Capacitor.registerPlugin('CapacitorGooglePlayBilling');
+      var tok = localStorage.getItem('token') || sessionStorage.getItem('token') || '';
+      return billing.purchase({ productId: pid }).then(function(r) {
+        if (r && r.purchaseToken) {
+          origFetch.call(window, url.replace('/stripe/create-checkout', '/auth/activate-pro'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + tok },
+            body: JSON.stringify({ purchaseToken: r.purchaseToken, productId: pid })
+          }).catch(function(){});
+        }
+        return new Response(JSON.stringify({ success: true, native: true }), {
+          status: 200, headers: { 'Content-Type': 'application/json' }
+        });
+      }).catch(function() { return origFetch.apply(window, args); });
+    }
+
+    var p = origFetch.apply(window, args);
+    if (url.indexOf('/analyze') > -1 && url.indexOf('history') < 0 && url.indexOf('stats') < 0) {
+      p.then(function(r) {
+        if (!r || !r.ok || isProUser()) return;
+        scanCount++; localStorage.setItem('_nsc', scanCount);
+        if (scanCount % 5 === 0) {
+          adMob.prepareInterstitial({ adId: ADMOB_INTER, isTesting: true })
+            .then(function() { return adMob.showInterstitial(); })
+            .catch(function(){});
+        }
+      }).catch(function(){});
+    }
+    return p;
+  };
+})();
+</script>
 </body>
 </html>
