@@ -1,0 +1,32 @@
+name: Backend Health Monitor
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+jobs:
+  health-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check all PurityApps backends
+        run: |
+          FAIL=0
+          check() {
+            code=$(curl -s -o /dev/null -w "%{http_code}" "$1/health" --max-time 10)
+            if [ "$code" = "200" ]; then
+              echo "✅ $2: OK"
+            else
+              echo "❌ $2: FAILED (HTTP $code)"
+              FAIL=1
+            fi
+          }
+          check "https://overflowing-adaptation-production-f0e8.up.railway.app" "Scanpurity"
+          check "https://successful-recreation-production-afcc.up.railway.app" "TinySteps"
+          check "https://snapreceipt-backend-production.up.railway.app" "SnapReceipt"
+          check "https://medscan-backend-production-13ab.up.railway.app" "MedScan"
+          check "https://homevault-backend-production.up.railway.app" "HomeVault"
+          check "https://puritypets-backend-production.up.railway.app" "PurityPets"
+          check "https://seniorsafe-backend-production.up.railway.app" "SeniorSafe"
+          if [ $FAIL -ne 0 ]; then
+            echo "Some backends are down!" && exit 1
+          fi
+          echo "All 7 backends healthy ✅"
